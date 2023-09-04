@@ -14,7 +14,8 @@ class NLP(BaseAPI):
         super().__init__(api_token, api_url)
 
     def _query(self, inputs: Union[Text, List, Dict], parameters: Optional[Dict] = None, options: Optional[Dict] = None, model: Optional[Text] = None, task: Optional[Text] = None) -> Union[Dict, List]:
-        if model:
+
+        if model and not task.startswith('translation_'):  # don't check variations of translation
             self._check_model_task_match(model, task)
 
         api_url = f"{self.api_url}/{model if model is not None else self.config['TASK_MODEL_MAP'][task]}"
@@ -404,9 +405,12 @@ class NLP(BaseAPI):
             if lang_input is None or lang_output is None:
                 InsufficientParametersException("lang_input and lang_output are required if model is not provided.")
             model = f"{self.config['TASK_MODEL_MAP']['translation']}{lang_input}-{lang_output}"
-            predictions = self._query_in_df(df, column, options=options, model=model, task='translation')
-        else:
-            predictions = self._query_in_df(df, column, options=options, model=model, task='translation')
+
+        task = 'translation'
+        if lang_input is not None and lang_output is not None:
+            task = f"translation_{lang_input}_to_{lang_output}"
+
+        predictions = self._query_in_df(df, column, options=options, model=model, task=task)
 
         df['predictions'] = [prediction['translation_text'] for prediction in predictions]
         return df
